@@ -44,7 +44,7 @@ jobs:
           test -d site/dist
           touch site/dist/.nojekyll
 
-      - name: Add working-project notice and force white header/footer
+      - name: Add notice, white chrome and cream logo title
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -76,6 +76,19 @@ jobs:
           }
           </style>'''
 
+          logo_path = Path('site/dist/fileadmin/group/811/Redesign/hannerupkirke-logo-ny.svg')
+          svg = logo_path.read_text(encoding='utf-8')
+          svg, logo_changes = re.subn(
+              r'(<text\b[^>]*\bfill=")#FFFFFF("[^>]*>Hannerup Kirke</text>)',
+              r'\1#E6D8B8\2',
+              svg,
+              count=1,
+              flags=re.IGNORECASE,
+          )
+          if logo_changes != 1:
+              raise SystemExit('Kunne ikke finde den hvide Hannerup Kirke-titel i SVG-logoet')
+          logo_path.write_text(svg, encoding='utf-8')
+
           changed = 0
           for path in Path('site/dist').rglob('*.html'):
               text = path.read_text(encoding='utf-8')
@@ -98,7 +111,7 @@ jobs:
               path.write_text(text, encoding='utf-8')
               changed += 1
 
-          print(f'Opdaterede header og tvang hvid footer i {changed} HTML-filer')
+          print(f'Opdaterede {changed} HTML-filer og satte logo-titlen til #E6D8B8')
           PY
 
       - name: Configure Pages
