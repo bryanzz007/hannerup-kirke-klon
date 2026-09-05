@@ -1,69 +1,58 @@
-name: Spejl Hannerup Kirke og publicer Pages
+name: Deploy clone-v1 to GitHub Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
 concurrency:
-  group: hannerup-clone
-  cancel-in-progress: true
+  group: github-pages
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: clone-v1
+  ASSET_NAME: hannerup-kirke-klon.zip
+  ASSET_SHA256: 3987363c5eaa61dc162ca0e5ebbba330446af58d6216a68e92a53ca40a25e970
 
 jobs:
-  mirror:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.release.tag_name == 'clone-v1'
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Hent repository
-        uses: actions/checkout@v4
-
-      - name: Spejl den offentlige hjemmeside
+      - name: Download clone-v1 release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          rm -rf dist
-          mkdir -p dist
-          wget \
-            --mirror \
-            --page-requisites \
-            --convert-links \
-            --adjust-extension \
-            --no-host-directories \
-            --domains=hannerup-kirke.dk,www.hannerup-kirke.dk \
-            --execute robots=off \
-            --directory-prefix=dist \
-            https://www.hannerup-kirke.dk/
+          mkdir -p release site
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "$ASSET_NAME" \
+            --dir release
+          echo "$ASSET_SHA256  release/$ASSET_NAME" | sha256sum --check -
 
-      - name: Tilføj arbejdsudgave-markering
+      - name: Extract release asset and select dist
         run: |
-          mkdir -p dist/clone
-          cp assets/clone/preview.css dist/clone/preview.css
-          cp assets/clone/preview.js dist/clone/preview.js
-          touch dist/.nojekyll
-          node scripts/prepare-clone.mjs
+          unzip -q "release/$ASSET_NAME" -d site
+          test -d site/dist
+          touch site/dist/.nojekyll
 
-      - name: Gem klonen i repository
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A dist
-          if git diff --cached --quiet; then
-            echo "Ingen ændringer i spejlet."
-          else
-            git commit -m "Mirror Hannerup Kirke snapshot"
-            git push
-          fi
-
-      - name: Klargør GitHub Pages
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Pak hjemmesiden til Pages
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload dist as Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: dist
+          path: site/dist
 
-      - name: Publicer GitHub Pages
+      - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
