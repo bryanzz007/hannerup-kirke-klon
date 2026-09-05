@@ -2,6 +2,8 @@ name: Deploy clone-v1 to GitHub Pages
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -41,6 +43,26 @@ jobs:
           unzip -q "release/$ASSET_NAME" -d site
           test -d site/dist
           touch site/dist/.nojekyll
+
+      - name: Add working-project notice to header
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          marker = '<header id="field_top" class="main-header">'
+          banner = '''<div class="working-project-notice" style="padding:10px 16px;text-align:center;font-weight:700;background:#fff3cd;color:#5c4600;border-bottom:1px solid #e6d48a;line-height:1.4;">Hannerup Kirke (OBS: Arbejdsprojekt, gå i stedet til <a href="https://hannerup-kirke.dk" style="color:inherit;text-decoration:underline;">https://hannerup-kirke.dk</a>)</div>'''
+
+          changed = 0
+          for path in Path('site/dist').rglob('*.html'):
+              text = path.read_text(encoding='utf-8')
+              if marker not in text:
+                  raise SystemExit(f'Mangler forventet header i {path}')
+              text = text.replace(marker, marker + '\n' + banner, 1)
+              path.write_text(text, encoding='utf-8')
+              changed += 1
+
+          print(f'Indsatte arbejdsprojekt-notice i {changed} HTML-filer')
+          PY
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
