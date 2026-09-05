@@ -44,21 +44,34 @@ jobs:
           test -d site/dist
           touch site/dist/.nojekyll
 
-      - name: Add working-project notice and white header/footer
+      - name: Add working-project notice and force white header/footer
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
-          marker = '<header id="field_top" class="main-header">'
+          header_marker = '<header id="field_top" class="main-header">'
           banner = '''<div class="working-project-notice" style="padding:10px 16px;text-align:center;font-weight:700;background:#fff3cd;color:#5c4600;border-bottom:1px solid #e6d48a;line-height:1.4;">Hannerup Kirke (OBS: Arbejdsprojekt, gå i stedet til <a href="https://hannerup-kirke.dk" style="color:inherit;text-decoration:underline;">https://hannerup-kirke.dk</a>)</div>'''
           white_chrome = '''<style>
           #field_top.main-header {
             background: #ffffff !important;
             background-image: none !important;
           }
+          footer,
           footer.basecolor_inverted {
             background: #ffffff !important;
+            background-color: #ffffff !important;
             background-image: none !important;
+            color: #333333 !important;
+          }
+          footer a,
+          footer h1,
+          footer h2,
+          footer h3,
+          footer h4,
+          footer h5,
+          footer p,
+          footer span {
             color: #333333 !important;
           }
           </style>'''
@@ -66,16 +79,26 @@ jobs:
           changed = 0
           for path in Path('site/dist').rglob('*.html'):
               text = path.read_text(encoding='utf-8')
-              if marker not in text:
+
+              if header_marker not in text:
                   raise SystemExit(f'Mangler forventet header i {path}')
-              text = text.replace(marker, marker + '\n' + banner, 1)
+              text = text.replace(header_marker, header_marker + '\n' + banner, 1)
+
               if '</head>' not in text:
                   raise SystemExit(f'Mangler </head> i {path}')
               text = text.replace('</head>', white_chrome + '\n</head>', 1)
+
+              footer_match = re.search(r'<footer\b[^>]*>', text, flags=re.IGNORECASE)
+              if not footer_match:
+                  raise SystemExit(f'Mangler footer i {path}')
+              footer_tag = footer_match.group(0)
+              footer_inline = footer_tag[:-1] + ' style="background:#ffffff !important;background-color:#ffffff !important;background-image:none !important;color:#333333 !important;">'
+              text = text[:footer_match.start()] + footer_inline + text[footer_match.end():]
+
               path.write_text(text, encoding='utf-8')
               changed += 1
 
-          print(f'Opdaterede header og footer i {changed} HTML-filer')
+          print(f'Opdaterede header og tvang hvid footer i {changed} HTML-filer')
           PY
 
       - name: Configure Pages
