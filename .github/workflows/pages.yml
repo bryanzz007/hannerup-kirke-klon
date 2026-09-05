@@ -44,7 +44,7 @@ jobs:
           test -d site/dist
           touch site/dist/.nojekyll
 
-      - name: Add notice, white chrome and cream logo title
+      - name: Add notice, white chrome and cream header text
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -54,8 +54,15 @@ jobs:
           banner = '''<div class="working-project-notice" style="padding:10px 16px;text-align:center;font-weight:700;background:#fff3cd;color:#5c4600;border-bottom:1px solid #e6d48a;line-height:1.4;">Hannerup Kirke (OBS: Arbejdsprojekt, gå i stedet til <a href="https://hannerup-kirke.dk" style="color:inherit;text-decoration:underline;">https://hannerup-kirke.dk</a>)</div>'''
           white_chrome = '''<style>
           #field_top.main-header {
+            --menu-color: #E6D8B8;
             background: #ffffff !important;
             background-image: none !important;
+          }
+          #field_top.main-header #mainnav > li > a,
+          #field_top.main-header .slicknav_nav > li > a,
+          #field_top.main-header .slicknav_nav > li > .slicknav_row > a,
+          #field_top.main-header .slicknav_menutxt {
+            color: #E6D8B8 !important;
           }
           footer,
           footer.basecolor_inverted {
@@ -111,7 +118,7 @@ jobs:
               path.write_text(text, encoding='utf-8')
               changed += 1
 
-          print(f'Opdaterede {changed} HTML-filer og satte logo-titlen til #E6D8B8')
+          print(f'Opdaterede {changed} HTML-filer og satte logo- og menutitler til #E6D8B8')
           PY
 
       - name: Configure Pages
