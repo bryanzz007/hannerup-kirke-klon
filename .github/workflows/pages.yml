@@ -44,13 +44,19 @@ jobs:
           test -d site/dist
           touch site/dist/.nojekyll
 
-      - name: Add working-project notice to header
+      - name: Add working-project notice and white header
         run: |
           python - <<'PY'
           from pathlib import Path
 
           marker = '<header id="field_top" class="main-header">'
           banner = '''<div class="working-project-notice" style="padding:10px 16px;text-align:center;font-weight:700;background:#fff3cd;color:#5c4600;border-bottom:1px solid #e6d48a;line-height:1.4;">Hannerup Kirke (OBS: Arbejdsprojekt, gå i stedet til <a href="https://hannerup-kirke.dk" style="color:inherit;text-decoration:underline;">https://hannerup-kirke.dk</a>)</div>'''
+          white_header = '''<style>
+          #field_top.main-header {
+            background: #ffffff !important;
+            background-image: none !important;
+          }
+          </style>'''
 
           changed = 0
           for path in Path('site/dist').rglob('*.html'):
@@ -58,10 +64,13 @@ jobs:
               if marker not in text:
                   raise SystemExit(f'Mangler forventet header i {path}')
               text = text.replace(marker, marker + '\n' + banner, 1)
+              if '</head>' not in text:
+                  raise SystemExit(f'Mangler </head> i {path}')
+              text = text.replace('</head>', white_header + '\n</head>', 1)
               path.write_text(text, encoding='utf-8')
               changed += 1
 
-          print(f'Indsatte arbejdsprojekt-notice i {changed} HTML-filer')
+          print(f'Opdaterede header i {changed} HTML-filer')
           PY
 
       - name: Configure Pages
