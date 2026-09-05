@@ -1,0 +1,69 @@
+name: Spejl Hannerup Kirke og publicer Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hannerup-clone
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hent repository
+        uses: actions/checkout@v4
+
+      - name: Spejl den offentlige hjemmeside
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          wget \
+            --mirror \
+            --page-requisites \
+            --convert-links \
+            --adjust-extension \
+            --no-host-directories \
+            --domains=hannerup-kirke.dk,www.hannerup-kirke.dk \
+            --execute robots=off \
+            --directory-prefix=dist \
+            https://www.hannerup-kirke.dk/
+
+      - name: Tilføj arbejdsudgave-markering
+        run: |
+          mkdir -p dist/clone
+          cp assets/clone/preview.css dist/clone/preview.css
+          cp assets/clone/preview.js dist/clone/preview.js
+          touch dist/.nojekyll
+          node scripts/prepare-clone.mjs
+
+      - name: Gem klonen i repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A dist
+          if git diff --cached --quiet; then
+            echo "Ingen ændringer i spejlet."
+          else
+            git commit -m "Mirror Hannerup Kirke snapshot"
+            git push
+          fi
+
+      - name: Klargør GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Pak hjemmesiden til Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Publicer GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
